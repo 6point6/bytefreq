@@ -55,13 +55,14 @@
 #      -v report="0"   outputs profile frequency reports, loadable as data 
 #      -v report="1"   outputs profile frequency reports, human readable and printable 
 #      -v report="2"   outputs your raw input data alongside formated profile strings. doubles your columns
-#      -v report="3"   outputs your raw + profile data stacked in a long format, suitable for clikhouse reporting
-#                      ** note this does not aggregate the data. You get row*column outputs. Aggregate it in a proper database.
+#      -v report="3"   outputs your raw + profile data stacked in a long format, suitable for clikhouse / database reporting
+#                        ** note this does not aggregate the data. You get row*column outputs. Aggregate it in a proper database.
 #      -v grain="H"    is the option to have granular reports, "L" is the option for simplified profiles
 #      -v grain="L"    is the option to have Low Grain reports - best for high 
 #      -v awk="awk"    experimental: override to allow using old versions of awk that can't do asort
-#                      ** note the override only works well on non-human readable reports
-#                       
+#                        ** note the override only works well on non-human readable reports 
+#      -v report="4"   Outputs a "data quality on read" json file allowing for many user directed remediation strategies
+                      
 ################################################################################################################# 
 ################################################################################################################# 
 #  I have inlined the quicksort module from runawk below, as asorti is not POXIX compliant or portable
@@ -260,8 +261,13 @@ if ( report == 0 ){
            report=3
 	   tabsep = "\t"
 	} 
+        else if (report ==4) {
+           # the flag below denote a data quality json output supporting "data quality on read" use cases
+           dqj=1
+        }
         else {
 	   report=1
+           dqj=2
 	}# end of the else and if
 
 if ( grain == "L" ){
@@ -276,12 +282,13 @@ if ( grain == "L" ){
        "date \"+%Y-%m-%d %H:%M:%S\" " | getline today
        # the above line sets the value of the variable today with the date as retrived from the command line program date. Works on nix.
 
+
 } #end of BEGIN
 
 ########### START OF DATA PROCESSING - FIRST HANDLE HEADER #####################################################################
 # calculate and count formats
 
-NR == header {
+NR == header && dqj == 0 {
 
 # note here I add in the column numbers to the col names.
 # that needs doing through adding it to a large number so the non-numeric sortation is correct in awk
@@ -326,7 +333,7 @@ NR == header {
 
 ################## This is the start of the main block processing ###################
 
-FNR > header { 
+FNR > header && dqj == 0 { 
  # notice we only profile data in the rows AFTER the header, so this can help to skip headers on data produced in reports
  # I've changed this to do the find and replace on each field, as nulls were playing up if you didn't specify delim
 
